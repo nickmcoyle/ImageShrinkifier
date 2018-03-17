@@ -1,6 +1,6 @@
 C:\Users\Nick Coyle\Documents\ImageShrinkifier\ImageShrinkifier\bin\Debug\ImageShrinkifier.exe.config
 C:\Users\Nick Coyle\Documents\ImageShrinkifier\ImageShrinkifier\bin\Debug\ImageShrinkifier.exe
 C:\Users\Nick Coyle\Documents\ImageShrinkifier\ImageShrinkifier\bin\Debug\ImageShrinkifier.pdb
+C:\Users\Nick Coyle\Documents\ImageShrinkifier\ImageShrinkifier\obj\Debug\ImageShrinkifier.csproj.CoreCompileInputs.cache
 C:\Users\Nick Coyle\Documents\ImageShrinkifier\ImageShrinkifier\obj\Debug\ImageShrinkifier.exe
 C:\Users\Nick Coyle\Documents\ImageShrinkifier\ImageShrinkifier\obj\Debug\ImageShrinkifier.pdb
-C:\Users\Nick Coyle\Documents\ImageShrinkifier\ImageShrinkifier\obj\Debug\ImageShrinkifier.csprojResolveAssemblyReference.cache

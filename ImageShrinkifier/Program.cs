@@ -9,8 +9,23 @@ using System.Threading.Tasks;
 
 namespace ImageShrinkifier
 {
-    class Program
+    class BatchShrink
     {
+
+        private string subFolderPath = "";
+
+        private long Compression = 95L;
+
+        private int SuccessCount = 0;
+
+        private string WorkingDirectory = System.Environment.CurrentDirectory;
+
+        private string ShrinkifyTempFile = "ShrinkifyTempFile.jpg";
+
+        private string[] searchFilters = new String[] { "jpg", "jpeg", "png", "gif", "tiff", "bmp" };
+
+        private string[] imgFiles;
+
         private static ImageCodecInfo GetEncoder(ImageFormat format)
         {
             ImageCodecInfo[] codecs = ImageCodecInfo.GetImageDecoders();
@@ -35,25 +50,33 @@ namespace ImageShrinkifier
             return filesFound.ToArray();
         }
 
-        public static long Compression = 95L;
-
-        public static int SuccessCount = 0;
-
-        public static string WorkingDirectory = System.Environment.CurrentDirectory;
-
-        public static string ShrinkifyTempFile = "ShrinkifyTempFile.jpg";
-
-        public static void DeleteTempFile()
+        
+        private bool DeleteTempFile()
         {
             if (File.Exists(WorkingDirectory + ShrinkifyTempFile))
             {
                 System.GC.Collect();
                 System.GC.WaitForPendingFinalizers();
                 File.Delete(WorkingDirectory + ShrinkifyTempFile);
-            }           
+                return true;
+            }
+            return false;
         }
 
-        public static string GetFileName(string imgFile)
+        private void DeleteOriginalImgFiles()
+        {
+            foreach (var file in this.imgFiles)
+            {
+                if (File.Exists(file))
+                {
+                    System.GC.Collect();
+                    System.GC.WaitForPendingFinalizers();
+                    File.Delete(file);
+                }
+            }
+        }
+
+        private string GetFileName(string imgFile)
         {
             string path = imgFile.ToString();
             int pos = path.LastIndexOf("\\") + 1;
@@ -61,7 +84,7 @@ namespace ImageShrinkifier
             return imgName;
         }
 
-        public static string GetFileExtension(string imgFile)
+        private string GetFileExtension(string imgFile)
         {
             string path = imgFile.ToString();
             int pos = path.LastIndexOf(".") + 1;
@@ -69,19 +92,31 @@ namespace ImageShrinkifier
             return extension;
         }
 
-        public static string MakeFolderPath()
+        private string MakeSubFolderPath()
         {
             //this is where the compressed images are saved
-            string folderPath = WorkingDirectory + "/readyForSIP/";          
+            string siteNumber = "";
+            Console.WriteLine("Enter site number ");
+            siteNumber = Console.ReadLine();
+            if(siteNumber.Length < 5 )
+            {
+                siteNumber = "0" + siteNumber;
+            }
+            string folderPath = WorkingDirectory + "//" + siteNumber + "//";          
             new FileInfo(folderPath).Directory.Create();           
             return folderPath;
         }
-
-    public static void ShrinkifyImage(string imgFile)
+        private bool copyImgFile(string imgName)
         {
-            using (Bitmap imgsrc = new Bitmap(imgFile))
+            File.Copy(imgName, this.subFolderPath + imgName);
+            return true;
+        }
+          
+        private bool ShrinkifyImage(string imgFileName)
+        {
+            using (Bitmap imgsrc = new Bitmap(imgFileName))
             {
-                DeleteTempFile();
+                this.DeleteTempFile();
            
                     ImageCodecInfo imgEncoder = GetEncoder(ImageFormat.Jpeg);
 
@@ -97,65 +132,72 @@ namespace ImageShrinkifier
                     if (length > 3145728)
                     {
                         Compression--;
-                        ShrinkifyImage(imgFile);
+                        this.ShrinkifyImage(imgFileName);
                     }
                     else
-                    {
-                        string folderPath = MakeFolderPath();
-                        string imgName = GetFileName(imgFile);
+                    {                       
                         try
                         {
-                            imgsrc.Save(@folderPath + imgName, imgEncoder, myEncoderParameters);
-                            Console.WriteLine("Compressed " + imgName);
+                            string path = this.subFolderPath;
+                            imgsrc.Save(@path + imgFileName, imgEncoder, myEncoderParameters);
+                            Console.WriteLine("Compressed " + imgFileName);
                             SuccessCount++;
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine("Could not compress " + imgName + " Error: " + e.Message.ToString());
+                            Console.WriteLine("Could not compress " + imgFileName + " Error: " + e.Message.ToString());
                         }
-                        return;
+                        return false;
                     }
                 }
+            return true;
             }
        
 
 static void Main(string[] args)
         {
-            
-            //find all the image files in the folder
-            String searchFolder = WorkingDirectory;
-            var filters = new String[] { "jpg", "jpeg", "png", "gif", "tiff", "bmp" };
-            var files = GetFilesFrom(searchFolder, filters, false);
+
+            BatchShrink bs = new BatchShrink();
+
+            //find all the image files in the folder            
+            bs.imgFiles = GetFilesFrom(bs.WorkingDirectory, bs.searchFilters, false);
+
+            //make sub folder to save the processed images
+            bs.subFolderPath = bs.MakeSubFolderPath();
 
             //one at a time process an image file
-            foreach(var imgFile in files)
+            foreach (var imgFile in bs.imgFiles)
             {
                 //reset the compression
-                Compression = 95L;
+                bs.Compression = 95L;
 
-                string imgName = GetFileName(imgFile);
-                long length = new System.IO.FileInfo(imgFile.ToString()).Length;
-                if (length < 3145728)
+                string imgFileName = bs.GetFileName(imgFile);
+                long imgFileSize = new System.IO.FileInfo(imgFileName).Length;
+                if (imgFileSize > 3145728)
+                {
+                    if (imgFileName != bs.ShrinkifyTempFile)
+                    {
+                        bs.ShrinkifyImage(imgFileName);
+                    }
+                }
+                else
                 {
                     try
                     {
-                        string folderPath = MakeFolderPath();
-                        File.Copy(imgFile.ToString(), folderPath + imgName);
-                        Console.WriteLine("Copied " + imgName);
-                        SuccessCount++;
+                        bs.copyImgFile(imgFileName);                        
+                        Console.WriteLine("Copied " + imgFileName);
+                        bs.SuccessCount++;
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
-                        Console.WriteLine("Could not copy " + imgName + " Error: " + e.Message.ToString());
+                        Console.WriteLine("Could not copy " + imgFileName + " Error: " + e.Message.ToString());
                     }
-                } else if (imgName != ShrinkifyTempFile)
-                {
-                    ShrinkifyImage(imgFile.ToString());
-                }               
+                }                 
             }
-            DeleteTempFile();
-            
-            Console.WriteLine("Successfully touched " + SuccessCount + " of " + files.Count());
+
+            bs.DeleteTempFile();
+            bs.DeleteOriginalImgFiles();
+            Console.WriteLine("Successfully touched " + bs.SuccessCount + " of " + bs.imgFiles.Count());
             Console.ReadKey();
         }
     }
